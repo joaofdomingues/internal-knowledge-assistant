@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internal Knowledge Assistant — Demo</title>
+<style>
+  :root {
+    --bg: #0E2438; --panel: #123049; --panel-2: #16385A; --line: #2A4B6B;
+    --ink: #EAF2FA; --ink-dim: #93AEC7; --accent: #F5A623;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 32px 32px; background-position: -1px -1px; min-height: 100vh;
+  }
+  header { padding: 28px 40px 20px; border-bottom: 1px solid var(--line); background: rgba(14,36,56,0.85); }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; margin: 0 0 6px; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; }
+  .sub { color: var(--ink-dim); font-size: 14px; margin: 0; }
+  main { max-width: 720px; margin: 0 auto; padding: 28px 24px 60px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 16px 0; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; background: var(--panel-2); border: 1px solid var(--line);
+    color: var(--ink-dim); padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  #chat { padding: 16px; min-height: 260px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 85%; padding: 12px 14px; border-radius: 10px; font-size: 14px; line-height: 1.6; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: #2B1B02; font-weight: 500; }
+  .msg.bot { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); }
+  .msg.bot .src { display: block; margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--accent); }
+  .composer { display: flex; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--line); }
+  input[type=text] {
+    flex: 1; background: #0A1B2C; border: 1px solid var(--line); color: var(--ink);
+    padding: 11px 14px; border-radius: 8px; font-family: var(--sans); font-size: 14px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  button.send {
+    background: var(--accent); color: #2B1B02; border: none; padding: 0 20px;
+    border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;
+  }
+  .footer-note { font-size: 12px; color: var(--ink-dim); margin-top: 24px; text-align: center; }
+  .dots span { animation: blink 1.2s infinite; }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Demo &mdash; João Domingues</p>
+  <h1>Internal Knowledge Assistant</h1>
+  <p class="sub">Chatbot com recuperação de documentos (TF-IDF) + resposta guiada por LLM</p>
+</header>
+
+<main>
+  <div class="card">
+    <div class="chips">
+      <div class="chip" data-q="Que equipamento de segurança é obrigatório no estaleiro?">Segurança no estaleiro</div>
+      <div class="chip" data-q="Quando preciso de duas cotações de fornecedores?">Política de compras</div>
+      <div class="chip" data-q="Quanto tempo dura o período experimental?">Onboarding</div>
+    </div>
+    <div id="chat"></div>
+    <div class="composer">
+      <input type="text" id="input" placeholder="Pergunta sobre segurança, compras, onboarding..." />
+      <button class="send" id="send">Enviar</button>
+    </div>
+  </div>
+</main>
+
+<p class="footer-note">Demo com recuperação local no browser &mdash; a versão real usa TF-IDF (scikit-learn) + Claude. Código: github.com/joaofdomingues/internal-knowledge-assistant</p>
+
+<script>
+const kb = [
+  { source: "safety_procedures.txt", text: "All personnel entering the construction site must wear a hard hat, high-visibility vest, and steel-toe boots at all times. Visitors must sign in at the site office and be accompanied by an authorized supervisor." },
+  { source: "safety_procedures.txt", text: "Scaffolding above 2 meters must be inspected weekly by a certified technician and tagged with the inspection date. Any scaffolding without a valid inspection tag must not be used." },
+  { source: "safety_procedures.txt", text: "In case of an accident, the site supervisor must be notified immediately, and an incident report must be filed within 24 hours using the standard company incident form." },
+  { source: "procurement_policy.txt", text: "Any purchase order below 1,000 EUR can be approved directly by a team lead. Purchase orders between 1,000 EUR and 10,000 EUR require sign-off from the department manager. Purchases above 10,000 EUR require approval from the finance director and at least two competing quotes from different vendors." },
+  { source: "procurement_policy.txt", text: "All vendors must be registered in the approved supplier list before an order can be placed. New vendors are added to the list after a compliance check by the procurement team, which typically takes 5 business days." },
+  { source: "onboarding_guide.txt", text: "Probation period is 90 days for all new hires. A performance review meeting with the direct manager is scheduled at the 45-day and 90-day marks." },
+  { source: "onboarding_guide.txt", text: "New employees receive a company laptop and email account on their first day. IT setup requests should be submitted at least 3 business days before the employee's start date." }
+];
+
+const answers = {
+  "safety_procedures.txt|0": "É obrigatório usar capacete, colete de alta visibilidade e botas de biqueira de aço em todo o estaleiro. Visitantes têm de se registar no escritório do estaleiro e ser acompanhados por um supervisor autorizado.",
+  "procurement_policy.txt|3": "Compras acima de 10.000 EUR exigem aprovação do diretor financeiro e pelo menos duas cotações de fornecedores diferentes. Entre 1.000 e 10.000 EUR basta o aval do gestor de departamento.",
+  "onboarding_guide.txt|5": "O período experimental é de 90 dias para todos os novos colaboradores, com reuniões de avaliação de desempenho marcadas aos 45 e aos 90 dias."
+};
+
+function score(query, text) {
+  const qWords = query.toLowerCase().replace(/[?.,]/g, '').split(/\s+/).filter(w => w.length > 2);
+  const tWords = text.toLowerCase().split(/\s+/);
+  let s = 0;
+  qWords.forEach(w => { if (tWords.some(tw => tw.includes(w) || w.includes(tw))) s++; });
+  return s;
+}
+
+function retrieve(query) {
+  let best = null, bestScore = -1, bestIdx = -1;
+  kb.forEach((doc, i) => {
+    const s = score(query, doc.text);
+    if (s > bestScore) { bestScore = s; best = doc; bestIdx = i; }
+  });
+  return { doc: best, idx: bestIdx };
+}
+
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+
+function addMsg(text, cls) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.innerHTML = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function ask(q) {
+  if (!q.trim()) return;
+  addMsg(q, 'user');
+  input.value = '';
+  const typing = addMsg('<span class="dots"><span>.</span><span>.</span><span>.</span></span>', 'bot');
+  setTimeout(() => {
+    const { doc, idx } = retrieve(q);
+    const key = doc.source + '|' + idx;
+    const answer = answers[key] || ('Passagem mais relevante encontrada: "' + doc.text.slice(0, 140) + '..."');
+    typing.innerHTML = answer + '<span class="src">Fonte: ' + doc.source + '</span>';
+  }, 700);
+}
+
+sendBtn.onclick = () => ask(input.value);
+input.addEventListener('keydown', e => { if (e.key === 'Enter') ask(input.value); });
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.onclick = () => ask(chip.dataset.q);
+});
+</script>
+
+</body>
+</html>
