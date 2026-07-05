@@ -1,0 +1,16 @@
+PROCUREMENT POLICY
+
+Any purchase order below 1,000 EUR can be approved directly by a team
+lead. Purchase orders between 1,000 EUR and 10,000 EUR require sign-off
+from the department manager. Purchases above 10,000 EUR require
+approval from the finance director and at least two competing
+quotes from different vendors.
+
+All vendors must be registered in the approved supplier list before
+an order can be placed. New vendors are added to the list after a
+compliance check by the procurement team, which typically takes 5
+business days.
+
+Invoices must reference a valid purchase order number. Invoices
+without a PO number will be returned to the vendor and payment will
+be delayed until the PO is confirmed.

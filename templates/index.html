@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Internal Knowledge Assistant</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; }
+  #answer { white-space: pre-wrap; background: #f4f4f4; padding: 12px; border-radius: 6px; margin-top: 16px; }
+  input { width: 80%; padding: 8px; }
+  button { padding: 8px 16px; }
+</style>
+</head>
+<body>
+  <h2>Internal Knowledge Assistant</h2>
+  <input id="question" placeholder="Ask about safety, procurement, onboarding..." />
+  <button onclick="ask()">Ask</button>
+  <div id="answer"></div>
+
+<script>
+async function ask() {
+  const q = document.getElementById('question').value;
+  const res = await fetch('/api/ask', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question: q})
+  });
+  const data = await res.json();
+  document.getElementById('answer').innerText = data.answer + "\n\nSources: " + (data.sources || []).join(', ');
+}
+</script>
+</body>
+</html>
